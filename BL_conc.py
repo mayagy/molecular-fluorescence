@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.integrate import trapezoid
 
 DATA_DIR = Path(__file__).resolve().parent / "data" / "csv"
-RESULTS_DIR = Path(__file__).resolve().parent / "results"
+RESULTS_DIR = Path(__file__).resolve().parent / "results" / "partA"
 WAVELENGTH_CUT = 470  # nm
 
 DYE_INFO = {
@@ -46,9 +46,9 @@ def load_and_process(path: Path):
 
 
 def main():
-    dye_data: dict[str, list[tuple[float, np.ndarray, np.ndarray, float]]] = {
-        key: [] for key in DYE_INFO
-    }
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    dye_data = {key: [] for key in DYE_INFO}
 
     for csv_path in sorted(DATA_DIR.glob("*.csv")):
         parsed = parse_filename(csv_path.name)
@@ -61,8 +61,6 @@ def main():
     for dye_key, entries in dye_data.items():
         entries.sort(key=lambda e: e[0])
         dye_name = DYE_INFO[dye_key]
-        concentrations = [e[0] for e in entries]
-        integrals = [e[3] for e in entries]
 
         # --- Plot 1: intensity spectra ---
         fig, ax = plt.subplots()
@@ -73,18 +71,35 @@ def main():
         ax.set_title(f"{dye_name} — Emission Spectra")
         ax.legend()
         fig.tight_layout()
-        fig.savefig(RESULTS_DIR.parent / f"{dye_key}_spectra.png", dpi=150)
+        fig.savefig(RESULTS_DIR / f"{dye_key}_spectra.png", dpi=150)
+        plt.close(fig)
 
-        # --- Plot 2: integral vs concentration ---
+        # --- Plot 2: integral vs concentration (per dye) ---
         fig, ax = plt.subplots()
+        concentrations = [e[0] for e in entries]
+        integrals = [e[3] for e in entries]
         ax.plot(concentrations, integrals, "o-")
         ax.set_xlabel("Concentration [mM]")
         ax.set_ylabel("Integrated log₁₀(Intensity)")
         ax.set_title(f"{dye_name} — Integral vs Concentration")
         fig.tight_layout()
-        fig.savefig(RESULTS_DIR.parent / f"{dye_key}_integral.png", dpi=150)
+        fig.savefig(RESULTS_DIR / f"{dye_key}_integral.png", dpi=150)
+        plt.close(fig)
 
-    plt.show()
+    # --- Combined integral plot: all 3 dyes ---
+    fig, ax = plt.subplots()
+    for dye_key, entries in dye_data.items():
+        entries.sort(key=lambda e: e[0])
+        concentrations = [e[0] for e in entries]
+        integrals = [e[3] for e in entries]
+        ax.plot(concentrations, integrals, "o-", label=DYE_INFO[dye_key])
+    ax.set_xlabel("Concentration [mM]")
+    ax.set_ylabel("Integrated log₁₀(Intensity)")
+    ax.set_title("Integral vs Concentration — All Dyes")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(RESULTS_DIR / "all_integrals.png", dpi=150)
+    plt.close(fig)
 
 
 if __name__ == "__main__":
