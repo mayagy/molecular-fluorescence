@@ -26,7 +26,8 @@ def parse_filename(name: str):
     if not m:
         return None
     dye_key = m.group(1)
-    conc = float("0." + m.group(2))  # e.g. "0005" -> 0.0005 mM
+    conc_str = m.group(2)
+    conc = float(conc_str[0] + "." + conc_str[1:])
     return dye_key, conc
 
 

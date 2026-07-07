@@ -29,7 +29,7 @@ This repository contains the data analysis code for a molecular fluorescence exp
 - **`data/csv/`** — Converted CSV files with columns `X [nm (air)]` and `Y [Intensity]`.
 - **`data/jpegs/`** — Cropped photographs of the laser beam passing through each cuvette.
 
-File naming convention: `{dye}_{concentration}.{ext}`, where dye is `F` (Fluorescein), `R_B` (Rhodamine B), or `R_6G` (Rhodamine 6G), and concentration is in mM with an implicit leading `0.` (e.g. `0005` = 0.0005 mM).
+File naming convention: `{dye}_{concentration}.{ext}`, where dye is `F` (Fluorescein), `R_B` (Rhodamine B), or `R_6G` (Rhodamine 6G), and concentration is in mM with a decimal point after the first digit (e.g. `01` = 0.1 mM, `0025` = 0.025 mM, `0005` = 0.005 mM).
 
 ### Results
 
