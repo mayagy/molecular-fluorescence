@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 from scipy.integrate import trapezoid
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR = Path(__file__).resolve().parent / "data" / "csv"
+RESULTS_DIR = Path(__file__).resolve().parent / "results"
 WAVELENGTH_CUT = 470  # nm
 
 DYE_INFO = {
@@ -72,7 +73,7 @@ def main():
         ax.set_title(f"{dye_name} — Emission Spectra")
         ax.legend()
         fig.tight_layout()
-        fig.savefig(DATA_DIR.parent / f"{dye_key}_spectra.png", dpi=150)
+        fig.savefig(RESULTS_DIR.parent / f"{dye_key}_spectra.png", dpi=150)
 
         # --- Plot 2: integral vs concentration ---
         fig, ax = plt.subplots()
@@ -81,7 +82,7 @@ def main():
         ax.set_ylabel("Integrated log₁₀(Intensity)")
         ax.set_title(f"{dye_name} — Integral vs Concentration")
         fig.tight_layout()
-        fig.savefig(DATA_DIR.parent / f"{dye_key}_integral.png", dpi=150)
+        fig.savefig(RESULTS_DIR.parent / f"{dye_key}_integral.png", dpi=150)
 
     plt.show()
 

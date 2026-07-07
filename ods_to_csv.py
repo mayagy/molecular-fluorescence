@@ -11,7 +11,7 @@ def convert_all(data_dir: Path):
         return
 
     for ods_path in ods_files:
-        csv_path = data_dir / ods_path.with_suffix(".csv").name
+        csv_path = data_dir / "csv" / ods_path.with_suffix(".csv").name
         df = pd.read_excel(ods_path, engine="odf")
         df.to_csv(csv_path, index=False)
         print(f"{ods_path.name} -> {csv_path.name}  ({len(df)} rows)")
