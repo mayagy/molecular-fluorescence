@@ -8,7 +8,8 @@ from scipy.integrate import trapezoid
 
 DATA_DIR = Path(__file__).resolve().parent / "data" / "csv"
 RESULTS_DIR = Path(__file__).resolve().parent / "results" / "partA"
-WAVELENGTH_CUT = 470  # nm
+WAVELENGTH_BOTTOM = 470  # nm
+WAVELENGTH_TOP = 700  # nm
 
 DYE_INFO = {
     "F": "Fluorescein",
@@ -36,12 +37,12 @@ def load_and_process(path: Path):
     wavelength = df.iloc[:, 0].values
     intensity = df.iloc[:, 1].values
 
-    mask = wavelength >= WAVELENGTH_CUT
+    mask = (wavelength >= WAVELENGTH_BOTTOM) & (wavelength <= WAVELENGTH_TOP)
     wavelength = wavelength[mask]
     intensity = intensity[mask]
 
-    log_intensity = np.log10(np.clip(intensity, a_min=1e-10, a_max=None))
-    integral = trapezoid(log_intensity, wavelength)
+    # log_intensity = np.log10(np.clip(intensity, a_min=1e-10, a_max=None))
+    integral = trapezoid(intensity, wavelength)
 
     return wavelength, intensity, integral
 
@@ -81,7 +82,7 @@ def main():
         integrals = [e[3] for e in entries]
         ax.plot(concentrations, integrals, "o-")
         ax.set_xlabel("Concentration [mM]")
-        ax.set_ylabel("Integrated log₁₀(Intensity)")
+        ax.set_ylabel("Integrated Intensity)")
         ax.set_title(f"{dye_name} — Integral vs Concentration")
         fig.tight_layout()
         fig.savefig(RESULTS_DIR / f"{dye_key}_integral.png", dpi=150)
@@ -95,9 +96,10 @@ def main():
         integrals = [e[3] for e in entries]
         ax.plot(concentrations, integrals, "o-", label=DYE_INFO[dye_key])
     ax.set_xlabel("Concentration [mM]")
-    ax.set_ylabel("Integrated log₁₀(Intensity)")
+    ax.set_ylabel("Integrated Intensity")
     ax.set_title("Integral vs Concentration — All Dyes")
-    ax.legend()
+    ax.legend(loc="upper right")
+    ax.set_ylim(top=ax.get_ylim()[1] * 1.2)  # Add some space above the highest point
     fig.tight_layout()
     fig.savefig(RESULTS_DIR / "all_integrals.png", dpi=150)
     plt.close(fig)
