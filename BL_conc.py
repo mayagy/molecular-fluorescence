@@ -9,8 +9,7 @@ from scipy.optimize import curve_fit
 
 DATA_DIR = Path(__file__).resolve().parent / "data" / "csv"
 RESULTS_DIR = Path(__file__).resolve().parent / "results" / "partA"
-WAVELENGTH_BOTTOM = 470  # nm
-WAVELENGTH_TOP = 700  # nm
+DATA_REGION = (470, 700)  # nm — cut off incident light (450 nm) and very noisy tail (>700 nm)
 NOISE_REGION = (650, 700)  # nm — tail where signal is ~0
 
 DYE_INFO = {
@@ -39,7 +38,7 @@ def load_and_process(path: Path):
     wavelength = df.iloc[:, 0].values
     intensity = df.iloc[:, 1].values
 
-    mask = (wavelength >= WAVELENGTH_BOTTOM) & (wavelength <= WAVELENGTH_TOP)
+    mask = (wavelength >= DATA_REGION[0]) & (wavelength <= DATA_REGION[1])
     wavelength = wavelength[mask]
     intensity = intensity[mask]
 
