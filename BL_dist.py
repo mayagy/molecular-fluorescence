@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 
+
 JPEGS_DIR = Path(__file__).resolve().parent / "data" / "jpegs"
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 BEAM_LENGTH_CM = 10
@@ -23,6 +24,15 @@ DYE_CHANNEL = {
     "R_6G": 1,   # green
 }
 
+# ============================================================
+# Store attenuation coefficients for summary plot
+# ============================================================
+
+summary = {
+    "Fluorescein": {"c": [], "alpha": [], "err": []},
+    "Rhodamine B": {"c": [], "alpha": [], "err": []},
+    "Rhodamine 6G": {"c": [], "alpha": [], "err": []},
+}
 
 def parse_filename(name):
     m = FILENAME_PATTERN.match(name)
@@ -130,16 +140,73 @@ def process_image(path):
         f.write(f"Chi2:      {chi2:.2f}\n")
         f.write(f"NDF:       {ndf}\n")
         f.write(f"Chi2/NDF:  {chi2_red:.4f}\n")
+    # --------------------------------------------------------
+    # Save fit results for summary plot
+    # --------------------------------------------------------
 
+    summary[DYE_NAMES[dye_key]]["c"].append(conc)
+    summary[DYE_NAMES[dye_key]]["alpha"].append(-slope)
+    summary[DYE_NAMES[dye_key]]["err"].append(slope_err)
     print(f"{path.name}: slope={slope:.4f}±{slope_err:.4f}, "
           f"chi2/ndf={chi2_red:.2f}")
 
 
 def main():
     RESULTS_DIR.mkdir(exist_ok=True)
+
     for path in sorted(JPEGS_DIR.glob("*.jpg")):
         process_image(path)
 
+    # ============================================================
+    # Summary plot
+    # ============================================================
+
+    fig, ax = plt.subplots(figsize=(6,4))
+
+    for dye in summary:
+
+        c = np.array(summary[dye]["c"])
+        alpha = np.array(summary[dye]["alpha"])
+        err = np.array(summary[dye]["err"])
+
+        order = np.argsort(c)
+
+        ax.errorbar(
+            c[order],
+            alpha[order],
+            yerr=err[order],
+            marker="o",
+            capsize=3,
+            linewidth=2,
+            label=dye,
+        )
+
+    ax.set_xlabel("Concentration [mM]")
+    ax.set_ylabel(r"Attenuation coefficient $\alpha$ [cm$^{-1}$]")
+    ax.set_title("Optical Attenuation vs Concentration")
+
+    ax.grid(True)
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig(RESULTS_DIR / "all_alpha.png", dpi=200)
+    plt.close(fig)
+
+    # ============================================================
+    # Save summary table
+    # ============================================================
+
+    with open(RESULTS_DIR / "attenuation_summary.txt", "w") as f:
+
+        f.write("Dye\tConcentration(mM)\talpha(cm^-1)\terror\n")
+
+        for dye in summary:
+
+            for c, a, e in zip(summary[dye]["c"],
+                               summary[dye]["alpha"],
+                               summary[dye]["err"]):
+
+                f.write(f"{dye}\t{c:.4f}\t{a:.5f}\t{e:.5f}\n")
 
 if __name__ == "__main__":
     main()
