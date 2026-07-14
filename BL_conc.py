@@ -87,7 +87,7 @@ def main():
         concentrations = [e[0] for e in entries]
         integrals = [e[3] for e in entries]
         sigmas = [e[4] for e in entries]
-        ax.errorbar(concentrations, integrals, yerr=sigmas, fmt="o-", capsize=3)
+        ax.errorbar(concentrations, integrals, yerr=sigmas, fmt="o-", capsize=3, markersize=2, linewidth=0.5)
         ax.set_xlabel("Concentration [mM]")
         ax.set_ylabel("Integrated Intensity")
         ax.set_title(f"{dye_name} — Integral vs Concentration")
@@ -102,7 +102,7 @@ def main():
         concentrations = [e[0] for e in entries]
         integrals = [e[3] for e in entries]
         sigmas = [e[4] for e in entries]
-        ax.errorbar(concentrations, integrals, yerr=sigmas, fmt="o-",
+        ax.errorbar(concentrations, integrals, yerr=sigmas, fmt="o-", markersize=2, linewidth=0.5,
                     capsize=3, label=DYE_INFO[dye_key])
     ax.set_xlabel("Concentration [mM]")
     ax.set_ylabel("Integrated Intensity")
@@ -151,14 +151,14 @@ def main():
         fig, (ax_fit, ax_res) = plt.subplots(2, 1, figsize=(8, 6),
                                              gridspec_kw={"height_ratios": [3, 1]},
                                              sharex=True)
-        ax_fit.errorbar(c, s, yerr=s_err, fmt="o", markersize=6, capsize=3)
+        ax_fit.errorbar(c, s, yerr=s_err, fmt="o", markersize=2, capsize=3)
         c_line = np.linspace(0, c[-1] * 1.1, 100)
         ax_fit.plot(c_line, linear(c_line, *popt), "r-")
         ax_fit.set_ylabel("Integrated Intensity")
         ax_fit.set_title(f"{dye_name} — S(c) Linear Fit")
         ax_fit.grid(True)
 
-        ax_res.errorbar(c, residuals, yerr=s_err, fmt="o", markersize=6, capsize=3)
+        ax_res.errorbar(c, residuals, yerr=s_err, fmt="o", markersize=2, capsize=3)
         ax_res.axhline(0, color="r", linewidth=1)
         ax_res.set_xlabel("Concentration [mM]")
         ax_res.set_ylabel("Residuals")
@@ -170,9 +170,9 @@ def main():
 
         # Add to combined plot
         color = f"C{list(DYE_INFO).index(dye_key)}"
-        combined_fit_ax.errorbar(c, s, yerr=s_err, fmt="o", markersize=6,
+        combined_fit_ax.errorbar(c, s, yerr=s_err, fmt="o", markersize=2, linewidth=0.5,
                                 capsize=3, color=color)
-        combined_fit_ax.plot(c_line, linear(c_line, *popt), "-", color=color,
+        combined_fit_ax.plot(c_line, linear(c_line, *popt), "-", color=color, linewidth=0.5,
                             label=f"{dye_name}")
 
     combined_fit_ax.set_xlabel("Concentration [mM]")

@@ -115,7 +115,7 @@ def process_image(path):
     ax_fit.errorbar(x_fit, y_fit, yerr=yerr_fit, fmt=",", color="#5599cc",
                     alpha=0.8, linewidth=0.3, label="Data", zorder=1)
     ax_fit.plot(x_fit, linear(x_fit, *popt), "r-", linewidth=1.5,
-                label=f"Fit: slope = {slope:.4f} ± {slope_err:.4f}", zorder=2)
+                label=f"Fit", zorder=2)
     ax_fit.set_ylabel("ln(Intensity)")
     ax_fit.set_title(f"{title_prefix} — Linear Fit")
     ax_fit.legend()
@@ -176,8 +176,9 @@ def main():
             alpha[order],
             yerr=err[order],
             marker="o",
+            markersize=2,
             capsize=3,
-            linewidth=2,
+            linewidth=0.5,
             label=dye,
         )
 
