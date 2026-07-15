@@ -33,7 +33,14 @@ summary = {
     "Rhodamine B": {"c": [], "alpha": [], "err": []},
     "Rhodamine 6G": {"c": [], "alpha": [], "err": []},
 }
-
+# Maximum concentration included in the alpha(c) linear fit.
+# Fluorescein at 0.10 mM is excluded because it clearly departs
+# from the approximately linear Beer--Lambert regime.
+ALPHA_FIT_MAX_CONC_MILLIMOLAR = {
+    "Fluorescein": 0.050,
+    "Rhodamine B": 0.100,
+    "Rhodamine 6G": 0.100,
+}
 def parse_filename(name):
     m = FILENAME_PATTERN.match(name)
     if not m:
@@ -150,7 +157,169 @@ def process_image(path):
     print(f"{path.name}: slope={slope:.4f}±{slope_err:.4f}, "
           f"chi2/ndf={chi2_red:.2f}")
 
+def fit_alpha_vs_concentration():
+    """
+    Fit alpha(c) = m*c + b for each dye.
 
+    Concentration c is supplied in mM, so:
+        m has units cm^-1 mM^-1
+
+    Since 1 mM = 10^-3 mol/L, the conventional molar attenuation
+    coefficient is:
+        epsilon = 1000*m  [L mol^-1 cm^-1]
+    """
+
+    fit_results = {}
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    for dye, values in summary.items():
+        c = np.asarray(values["c"], dtype=float)
+        alpha = np.asarray(values["alpha"], dtype=float)
+        alpha_err = np.asarray(values["err"], dtype=float)
+
+        # Sort measurements by concentration
+        order = np.argsort(c)
+        c = c[order]
+        alpha = alpha[order]
+        alpha_err = alpha_err[order]
+
+        # Retain only the selected approximately linear regime
+        max_conc = ALPHA_FIT_MAX_CONC_MILLIMOLAR[dye]
+        fit_mask = c <= max_conc
+
+        c_fit = c[fit_mask]
+        alpha_fit = alpha[fit_mask]
+        err_fit = alpha_err[fit_mask]
+
+        if len(c_fit) < 3:
+            raise ValueError(
+                f"Not enough concentration points to fit {dye}: "
+                f"{len(c_fit)} points available."
+            )
+
+        # Weighted linear fit: alpha = slope*c + intercept
+        popt, pcov = curve_fit(
+            linear,
+            c_fit,
+            alpha_fit,
+            sigma=err_fit,
+            absolute_sigma=True,
+        )
+
+        slope, intercept = popt
+        slope_err, intercept_err = np.sqrt(np.diag(pcov))
+
+        fitted_alpha = linear(c_fit, *popt)
+        residuals = alpha_fit - fitted_alpha
+
+        chi2 = np.sum((residuals / err_fit) ** 2)
+        ndf = len(c_fit) - 2
+        chi2_red = chi2 / ndf if ndf > 0 else np.nan
+
+        # Convert from cm^-1 mM^-1 to L mol^-1 cm^-1
+        epsilon = 1000.0 * slope
+        epsilon_err_formal = 1000.0 * slope_err
+
+        # The image-derived errors are very small and the reduced chi-square
+        # may be much larger than one. This scaled error reflects the observed
+        # scatter more realistically.
+        uncertainty_scale = np.sqrt(chi2_red) if chi2_red > 1 else 1.0
+        epsilon_err_scaled = epsilon_err_formal * uncertainty_scale
+
+        fit_results[dye] = {
+            "slope_cm-1_mM-1": slope,
+            "slope_err_cm-1_mM-1": slope_err,
+            "intercept_cm-1": intercept,
+            "intercept_err_cm-1": intercept_err,
+            "epsilon_L_mol-1_cm-1": epsilon,
+            "epsilon_err_formal": epsilon_err_formal,
+            "epsilon_err_scaled": epsilon_err_scaled,
+            "chi2": chi2,
+            "ndf": ndf,
+            "chi2_red": chi2_red,
+            "max_concentration_mM": max_conc,
+        }
+
+        # Plot all measured points
+        ax.errorbar(
+            c,
+            alpha,
+            yerr=alpha_err,
+            fmt="o",
+            capsize=3,
+            markersize=5,
+            label=f"{dye} data",
+        )
+
+        # Plot the fit only across the fitted concentration interval
+        c_line = np.linspace(0.0, max_conc, 250)
+        ax.plot(
+            c_line,
+            linear(c_line, *popt),
+            linewidth=1.5,
+            label=(
+                rf"{dye} fit: "
+                rf"$\varepsilon_{{\rm eff}}={epsilon:.0f}$ "
+                rf"L mol$^{{-1}}$ cm$^{{-1}}$"
+            ),
+        )
+
+    ax.set_xlabel("Concentration [mM]")
+    ax.set_ylabel(r"Attenuation coefficient $\alpha$ [cm$^{-1}$]")
+    ax.set_title("Linear Fits of Optical Attenuation vs Concentration")
+    ax.grid(True)
+    ax.legend(fontsize=8)
+
+    fig.tight_layout()
+    fig.savefig(RESULTS_DIR / "alpha_linear_fits.png", dpi=200)
+    plt.close(fig)
+
+    # Save detailed numerical fit results
+    output_path = RESULTS_DIR / "molar_attenuation_fits.txt"
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(
+            "Fit model: alpha(c) = slope*c + intercept\n"
+            "Concentration is expressed in mM.\n"
+            "epsilon_eff = 1000*slope in L mol^-1 cm^-1.\n\n"
+        )
+
+        for dye, result in fit_results.items():
+            f.write(f"=== {dye} ===\n")
+            f.write(
+                "Fitted concentration range: "
+                f"c <= {result['max_concentration_mM']:.3f} mM\n"
+            )
+            f.write(
+                "Slope:     "
+                f"{result['slope_cm-1_mM-1']:.6f} +/- "
+                f"{result['slope_err_cm-1_mM-1']:.6f} "
+                "cm^-1 mM^-1\n"
+            )
+            f.write(
+                "Intercept: "
+                f"{result['intercept_cm-1']:.6f} +/- "
+                f"{result['intercept_err_cm-1']:.6f} cm^-1\n"
+            )
+            f.write(
+                "epsilon_eff: "
+                f"{result['epsilon_L_mol-1_cm-1']:.2f} +/- "
+                f"{result['epsilon_err_formal']:.2f} "
+                "L mol^-1 cm^-1 (formal fit uncertainty)\n"
+            )
+            f.write(
+                "epsilon_eff: "
+                f"{result['epsilon_L_mol-1_cm-1']:.2f} +/- "
+                f"{result['epsilon_err_scaled']:.2f} "
+                "L mol^-1 cm^-1 "
+                "(uncertainty scaled by sqrt(chi2/NDF))\n"
+            )
+            f.write(f"Chi2:      {result['chi2']:.3f}\n")
+            f.write(f"NDF:       {result['ndf']}\n")
+            f.write(f"Chi2/NDF:  {result['chi2_red']:.3f}\n\n")
+
+    return fit_results
 def main():
     RESULTS_DIR.mkdir(exist_ok=True)
 
@@ -158,13 +327,12 @@ def main():
         process_image(path)
 
     # ============================================================
-    # Summary plot
+    # Summary plot: alpha vs concentration
     # ============================================================
 
-    fig, ax = plt.subplots(figsize=(6,4))
+    fig, ax = plt.subplots(figsize=(6, 4))
 
     for dye in summary:
-
         c = np.array(summary[dye]["c"])
         alpha = np.array(summary[dye]["alpha"])
         err = np.array(summary[dye]["err"])
@@ -185,7 +353,6 @@ def main():
     ax.set_xlabel("Concentration [mM]")
     ax.set_ylabel(r"Attenuation coefficient $\alpha$ [cm$^{-1}$]")
     ax.set_title("Optical Attenuation vs Concentration")
-
     ax.grid(True)
     ax.legend()
 
@@ -194,20 +361,42 @@ def main():
     plt.close(fig)
 
     # ============================================================
-    # Save summary table
+    # Save attenuation summary table
     # ============================================================
 
-    with open(RESULTS_DIR / "attenuation_summary.txt", "w") as f:
-
+    with open(
+        RESULTS_DIR / "attenuation_summary.txt",
+        "w",
+        encoding="utf-8",
+    ) as f:
         f.write("Dye\tConcentration(mM)\talpha(cm^-1)\terror\n")
 
         for dye in summary:
+            for c, a, e in zip(
+                summary[dye]["c"],
+                summary[dye]["alpha"],
+                summary[dye]["err"],
+            ):
+                f.write(
+                    f"{dye}\t{c:.4f}\t{a:.5f}\t{e:.5f}\n"
+                )
 
-            for c, a, e in zip(summary[dye]["c"],
-                               summary[dye]["alpha"],
-                               summary[dye]["err"]):
+    # ============================================================
+    # Fit alpha(c) and extract epsilon_eff
+    # ============================================================
 
-                f.write(f"{dye}\t{c:.4f}\t{a:.5f}\t{e:.5f}\n")
+    molar_fit_results = fit_alpha_vs_concentration()
+
+    print("\nEffective molar attenuation coefficients:")
+
+    for dye, result in molar_fit_results.items():
+        print(
+            f"{dye}: epsilon_eff = "
+            f"{result['epsilon_L_mol-1_cm-1']:.2f} +/- "
+            f"{result['epsilon_err_scaled']:.2f} "
+            "L mol^-1 cm^-1"
+        )
+
 
 if __name__ == "__main__":
     main()
