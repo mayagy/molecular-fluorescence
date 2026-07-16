@@ -222,8 +222,7 @@ def fit_alpha_vs_concentration():
         epsilon_err_formal = 1000.0 * slope_err
 
         # The image-derived errors are very small and the reduced chi-square
-        # may be much larger than one. This scaled error reflects the observed
-        # scatter more realistically.
+        # may be much larger than one. Apply PDG error treatment to fix.
         uncertainty_scale = np.sqrt(chi2_red) if chi2_red > 1 else 1.0
         epsilon_err_scaled = epsilon_err_formal * uncertainty_scale
 
@@ -248,7 +247,8 @@ def fit_alpha_vs_concentration():
             yerr=alpha_err,
             fmt="o",
             capsize=3,
-            markersize=5,
+            markersize=2,
+            linewidth=0.5,
             label=f"{dye} data",
         )
 
@@ -257,7 +257,7 @@ def fit_alpha_vs_concentration():
         ax.plot(
             c_line,
             linear(c_line, *popt),
-            linewidth=1.5,
+            linewidth=0.5,
             label=(
                 rf"{dye} fit: "
                 rf"$\varepsilon_{{\rm eff}}={epsilon:.0f}$ "
